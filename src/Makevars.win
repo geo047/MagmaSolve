@@ -1,0 +1,21 @@
+## Use the R_HOME indirection to support installations of multiple R version
+
+# if we needed MKL then we could use something like this:
+# PKG_CPPFLAGS = -m64 -I"C:/Program Files (x86)/Intel/ComposerXE-2011/mkl/include"
+# PKG_LIBS = $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "Rcpp:::LdFlags()")  -L "C:/Program Files (x86)/Intel/ComposerXE-2011/mkl/lib/ia32"  -lmkl_rt
+
+
+PKG_CPPFLAGS = -m64 -I../inst/include
+PKG_LIBS = $(shell "${R_HOME}/bin${R_ARCH_BIN}/Rscript.exe" -e "Rcpp:::LdFlags()")  
+
+
+## Some variables that may be used include:
+##  * `DEBUG=T' to compile with debugging information for `gdb'.
+##  * `PKG_CFLAGS=' to specify options to the C compiler.
+##  * `PKG_CPPFLAGS=' to specify options to the preprocessor.
+##  * `PKG_CXXFLAGS=' to specify options to the C++ compiler.
+##  * `PKG_FFLAGS=' to specify options to the FORTRAN 77 compiler.
+##  * `PKG_FCFLAGS=' to specify options to the Fortran 95 compiler (if specified).
+##  * `PKG_LIBS=' to specify options to the linking step making the DLL.
+
+

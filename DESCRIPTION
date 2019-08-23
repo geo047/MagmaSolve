@@ -1,0 +1,17 @@
+Package:MagmaEigenNonsym
+Type: Package
+Title: Implemention of several matrix and linear algrebra functions via the multi-GPU-based functionality in the MAGMA library
+Version: 0.1.0
+Date: 2019-07-01
+Author: 
+  Joshua Bowden [aut, cre],
+  Andrew George [aut, cre]
+Maintainer:  Andrew George  <andrew.george@csiro.au> 
+Description: Provides a client-server based interface to he the 2 stage symmetric eigenvalue decomposition (dsyevdx_2stage_m()) multi-gpu/single-gpu routine from the MAGMA library. Can be used as replacement for the eigen() function in R for symmetric, double precision (the default in R) matrices. We get the server to check how many GPUs are present therefore we do not need CUDA/other interface to be present for compilation of the MagmaEigenNonsym package. required is the MAGMA library available (http://icl.cs.utk.edu/magma/) compiled as position independent code with a multi-threaded high performance LAPACK and -DMAGMA_ILP64 defined (an example make.inc file should be available in MAGMA download package).  
+NeedsCompilation: yes
+License: GPL-3 + file LICENCE
+LazyLoad: yes
+Depends: R (>= 3.5), Rcpp (>= 0.11.0)
+Imports: Rcpp
+LinkingTo: Rcpp
+SystemRequirements: GNU make

@@ -1,0 +1,78 @@
+
+# setup
+set.seed(101)
+n <- 100
+ngpu <- 4
+K <- matrix(sample(c(0,1), n*n, T), nrow=n)
+K <- tcrossprod(K)
+Z <- matrix(data=0, nrow=2*n, ncol=n)
+for(ii in 1:(2*n)){
+  indx <- sample(1:n, 1, F)
+  Z[ii, indx] <- 1
+}
+## LEFT ----->   emma_eigen_L_w_Z.R
+## Equal but with some reordering 
+res <- K %*% crossprod(Z, Z)
+
+# CPU based
+ library(MagmaEigenNonsym)
+ MagmaEigenNonsym::RunServer( matrixMaxDimension=n,  numGPUsWanted=ngpu, memName="/syevd_mem", semName="/syevd_sem", print=0)
+
+  eigGPU <- MagmaEigenNonsym::eigen_nonsym_mgpu(res , symmetric = FALSE , only_values=FALSE)
+  indx <- order(eigGPU$values, decreasing=TRUE)
+
+  valuesGPU = eigGPU$values[indx]
+  vectorsGPU = qr.Q(qr(Z %*% eigGPU$vectors), complete = TRUE)
+  vectorsGPU = vectorsGPU[, indx]
+
+ ## CPU 
+   eigCPU <- eigen(res, symmetric = FALSE, EISPACK = TRUE)
+   indx <- order(eigCPU$values, decreasing=TRUE)
+
+  valuesCPU = eigCPU$values[indx]
+  vectorsCPU = qr.Q(qr(Z %*% eigCPU$vectors), complete = TRUE)
+  vectorsCPU = vectorsCPU[, indx]
+
+   print(vectorsGPU[1:5, 1:5])
+   print("---------------------")
+   print(vectorsCPU[1:5, 1:5])
+
+### RIGHT -----------> 
+
+  X <- cbind(rep(1, 2*n), rnorm(2*n, 0, 2*n), sample(c(1:5), 2*n, TRUE))
+qr.X <- qr.Q(qr(X))
+  SZ <- Z - X %*% solve(crossprod(X, X)) %*% crossprod(X, Z)
+  res <- K %*% crossprod(Z, SZ)
+   N <- nrow(Z)
+    t <- ncol(Z)
+    q <- ncol(X)
+
+ library(MagmaEigenNonsym)
+ MagmaEigenNonsym::RunServer( matrixMaxDimension=dim(res)[1],  numGPUsWanted=ngpu, memName="/syevd_mem", semName="/syevd_sem", print=0)
+
+ eigGPU <- MagmaEigenNonsym::eigen_nonsym_mgpu(res , symmetric = FALSE , only_values=FALSE)
+ indx <- order(eigGPU$values, decreasing=TRUE)
+ eigGPU$vectors <-  eigGPU$vectors[, indx]
+ eigGPU$values <- eigGPU$values[indx]
+
+l_gpu <- list(values = eigGPU$values[1:(t - q)],
+       vectors = qr.Q(qr(cbind(SZ %*% eigGPU$vectors[, 1:(t - q)], qr.X)), complete = TRUE)[,
+        c(1:(t - q), (t + 1):N)])
+
+    eig <- eigen(res , symmetric = FALSE, EISPACK = TRUE)
+
+l_cpu <- list(values = eig$values[1:(t - q)],
+       vectors = qr.Q(qr(cbind(SZ %*% eig$vectors[, 1:(t - q)], qr.X)), complete = TRUE)[, c(1:(t - q), (t + 1):N)])
+
+
+print(l_gpu$vectors[1:5, 1:5])
+   print("---------------------")
+print(l_cpu$vectors[1:5, 1:5])
+
+
+
+
+
+
+
+
