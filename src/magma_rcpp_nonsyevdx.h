@@ -1,5 +1,5 @@
 /*
- * 		magma_rcpp_nonsyevdx.h
+ * 		magma_rcpp_solve.h
  *
  *      Author: Josh Bowden
  *      CSIRO

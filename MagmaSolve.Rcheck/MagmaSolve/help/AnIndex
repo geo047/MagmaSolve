@@ -1,0 +1,6 @@
+GetServerArgs	GetServerArgs
+MagmaSolve	MagmaSolve
+MakeServer	MakeServer
+RunServer	RunServer
+solve_mgpu	solve_mgpu
+StopServer	StopServer

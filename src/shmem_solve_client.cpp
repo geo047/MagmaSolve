@@ -76,7 +76,7 @@ void StopServer( )
   }*/
 }
 
-//' Called when the package is unloaded or R terminated - it releases the shared memory objects that are used to communicate with the nonsyevd_server executable
+//' Called when the package is unloaded or R terminated - it releases the shared memory objects that are used to communicate with the solve_server executable
 // [[Rcpp::export(name=".CleanupSharedMemory")]] 
 int CleanupSharedMemory(  )
 {
@@ -96,7 +96,7 @@ int CleanupSharedMemory(  )
 //' Initialise shared memory on client and obtain server launch string.
 //' @description This function will create a CSharedMemory object that initialises the shared memory region and the semaphore used for comms beteween client and server.
 //' If the object is already initialised it is removed and reinitialised. 
-//' Returns a string of the form "-n 10000 -v 1 -g 3 -m /syevx_<PID_of_client> -s /sem_<PID_of_client> -p" that can be used to launch a nonsyevd_server process
+//' Returns a string of the form "-n 10000 -v 1 -g 3 -m /syevx_<PID_of_client> -s /sem_<PID_of_client> -p" that can be used to launch a solve_server process
 //' that will accept matrix data on which to perform eigenvalue decomposition 
 //' @param matrixDimension   - type (integer) - the dimension of the (assumed square) matrix
 //' @param numGPUsWanted     - type (string)  - The number of GPUs to use in for the non-symmetric eigenvalue (syevd) computation
@@ -104,7 +104,7 @@ int CleanupSharedMemory(  )
 //' @param memName           - type (string)  - a name to give to the named shared memory region (will be created in /dev/shm/) and defaults to the user name if nothing specified
 //' @param semName           - type (string)  - a name to give to the semaphore (will be placed in /dev/shm) and defaults to the user name if nothing specified
 //' @param printDetails      - type (integer 0|1|2) - 0 = don't print, 1 = print details of server progress to screen; 2 = print to log (not functional)
-//' @return                  - type (string) A string that can be used a command line arguments to run the nonsyevd_server executable
+//' @return                  - type (string) A string that can be used a command line arguments to run the solve_server executable
 // [[Rcpp::export(rng=false)]] 
 std::string GetServerArgs(int matrixDimension, bool withVectors, int numGPUsWanted, std::string memName, std::string semName , int printDetails)
 {
@@ -146,12 +146,12 @@ std::string GetServerArgs(int matrixDimension, bool withVectors, int numGPUsWant
   
   // Get directory containing the executable:
   Rcpp::Function pathpackage_rcpp = Rcpp::Environment::base_env()["path.package"];  // get the R function "path.package()"
-	SEXP retvect = pathpackage_rcpp ("MagmaEigenNonsym");  // use the R function in C++ 
+	SEXP retvect = pathpackage_rcpp ("MagmaSolve");  // use the R function in C++ 
 	serverpathstring = Rcpp::as<std::string>(retvect) ; // convert from SEXP to C++ type
-	serverpathstring = serverpathstring + "/bin/nonsyevd_server.exe" ;
+	serverpathstring = serverpathstring + "/bin/solve_server.exe" ;
   if (!exists(serverpathstring))
   {
-    ss_string << " MAGMA_EVD_CLIENT Error: MagmaEigenNonsym::GetServerArgs()  " << std::endl ;
+    ss_string << " MAGMA_EVD_CLIENT Error: MagmaSolve::GetServerArgs()  " << std::endl ;
     ss_string << "\t Server executable does not exist: " << serverpathstring << std::endl ;
     ss_string << "\t Please set up an appropriate environment and set the <package_dir>/src/make.inc file variables." << std::endl ; 
     ss_string << "\t The environment requires the ILP64 version of the MAGMA library to be installed and MAGMA_HOME to be be set." << std::endl ;
@@ -176,12 +176,12 @@ std::string GetServerArgs(int matrixDimension, bool withVectors, int numGPUsWant
     ss_string << " -p " ;
   
   if (main_args.msgChannel == PRINT ) _PRINTSTD << " MAGMA_EVD_CLIENT Info: Server launching string: " << ss_string.str() << std::endl ;
-  // 	"<R_HOME>/library/bin/nonsyevd_server -n 10000 -v 1 -g 3 -m /syevx_<PID_of_client> -s /sem_<PID_of_client>"
+  // 	"<R_HOME>/library/bin/solve_server -n 10000 -v 1 -g 3 -m /syevx_<PID_of_client> -s /sem_<PID_of_client>"
   
 	return(ss_string.str()) ;
 	
 	// We get the server to check how many GPUs are present
-  // therefore we do not need CUDA/other interface to be present for compilation of the MagmaEigenNonsym package
+  // therefore we do not need CUDA/other interface to be present for compilation of the MagmaSolve package
   
 }
 
@@ -191,26 +191,21 @@ std::string GetServerArgs(int matrixDimension, bool withVectors, int numGPUsWant
 //' @description This function performs the eigenvalue decomposition of the input matrix and returns the eigenvalues and (if requested) the 
 //' eigenvectors of the input matrix in the returned list, identical to the base R eigen() function. If overwrite=TRUE then the eigenvectors are copied into the ***input matrix*** and the original matrix 
 //' data is overwritten. 
-//' The method involves the offload of the matrix data to a seperate nonsyevd_server executable by copying data into a shared memory area and 
+//' The method involves the offload of the matrix data to a seperate solve_server executable by copying data into a shared memory area and 
 //' signalling to the server that the data is availble. This function will block until the server has completed the decomposition. The 
 //' function checks that the input is square, however it does not check that the matrix is non-symmetric.
-//' N.B. The maximum size allowed of the input matrix is goverend by what was provided in the MagmaEigenNonsym::RunServer() function. The server 
+//' N.B. The maximum size allowed of the input matrix is goverend by what was provided in the MagmaSolve::RunServer() function. The server 
 //' will automatically be restarted with a larger shared memory area if user wants to perorm EVD on a larger matrix.
 //' @param matrix - the input matrix to be used in eigenvalue decomposition. It is assumed to be square 
-//' @param symmetric - the input is assumed to be non-symmetric and real. Function will fail if symmetric=TRUE.
-//' @param only_values - If TRUE: only compute eigenvalues. If FALSE: Compute eigenvectors also. 
-//' @param overwrite - If TRUE: The resulting eigenvectors (if requested) will overwrite the input matrix to potentially reduce memory requirements. 
-//' @param printInfo - Prints diagnostic information about the client processing
 //' @return A list that contains the eigenvalues and if requested the eignenvectors. If overwrite==TRUE then the eignevectors are copied into the ***input matrix***
 // [[Rcpp::export(rng=false)]]
-Rcpp::List eigen_nonsym_mgpu(Rcpp::NumericMatrix matrix, bool symmetric=false,  bool only_values=false, bool overwrite=false, bool printInfo=false )
+Rcpp::NumericMatrix  solve_mgpu(Rcpp::NumericMatrix matrix, bool symmetric=true,  bool only_values=false, bool overwrite=false, bool printInfo=true )
 {
   std::stringstream ss_string;
+  bool withVectors = ! only_values ; 
   
-  if (symmetric == true)
-   Rcpp::stop(" MAGMA_EVD_CLIENT Error: eigen_nonsym_mgpu() assumes a non-symmetric matrix as input and user has specified symmetric") ;
-    
-  bool withVectors = ! only_values ;
+
+  
   if (shrd_client != NULL)
   {
     try {
@@ -218,86 +213,63 @@ Rcpp::List eigen_nonsym_mgpu(Rcpp::NumericMatrix matrix, bool symmetric=false,  
       if (matrix.ncol() > shrd_client->_max_matrix_dim)  
       {
          // delete shrd_client ;
-         _PRINTSTD << " MAGMA_EVD_CLIENT Error: eigen_nonsym_mgpu() input matrix size (" << matrix.ncol() << ") " ;
+         _PRINTSTD << " MAGMA_EVD_CLIENT Error: solve_mgpu() input matrix size (" << matrix.ncol() << ") " ;
          _PRINTSTD << " is bigger than maximum requested! (" << shrd_client->_max_matrix_dim << ")" << std::endl ;
          _PRINTSTD << " Please run RunServer() with a larger matrixMaxDimension argument"  << ")"<< std::endl ;
          std::flush(_PRINTSTD) ;
-         Rcpp::stop("MAGMA_EVD_CLIENT Error: eigen_nonsym_mgpu()") ;
+         Rcpp::stop("MAGMA_EVD_CLIENT Error: solve_mgpu()") ;
          // return(Rcpp::List::create(  Rcpp::Named("error") = ss_string.str() )) ;
       }
       
       if (matrix.ncol() != matrix.nrow()) {
-         _PRINTSTD << " MAGMA_EVD_CLIENT Error: eigen_nonsym_mgpu() The input matrix is not square! Rows: " << matrix.nrow() << " Cols:" << matrix.ncol()  << std::endl ;
+         _PRINTSTD << " MAGMA_EVD_CLIENT Error: solve_mgpu() The input matrix is not square! Rows: " << matrix.nrow() << " Cols:" << matrix.ncol()  << std::endl ;
          std::flush(_PRINTSTD) ;
-         Rcpp::stop("MAGMA_EVD_CLIENT Error: eigen_nonsym_mgpu()") ;
+         Rcpp::stop("MAGMA_EVD_CLIENT Error: solve_mgpu()") ;
          //return(Rcpp::List::create(  Rcpp::Named("error") = ss_string.str()  )) ;
       }
         
-      shrd_client->SetCurrentMatrixSizeAndVectorsRequest(matrix.ncol(), withVectors) ;
+      shrd_client->SetCurrentMatrixSizeAndVectorsRequest(matrix.ncol(), withVectors) ;  //true for withVectors
       size_t numbytes = matrix.ncol() * matrix.ncol() * sizeof(double) ;
+         
       
       // Copy memory from R matrix to shared memory region
       shrd_client->copy_matrix_into_shmem(matrix.begin(), numbytes ) ;
       //  *** Call sem_post() so that the server can then move on to do processing 
-      if (printInfo == true) _PRINTSTD << " MAGMA_EVD_CLIENT Info: copy_matrix_into_shmem() has copied memory to shared region, calling sem_post()" << std::endl  ;
-      
+   
       sem_post(shrd_client->_sem_id);
-      if (printInfo == true) _PRINTSTD << " MAGMA_EVD_CLIENT Info: sem_post() was called - release the server thread " << std::endl  ;
-      std::flush(_PRINTSTD) ;
+
       
       sleep(1) ;  // Give the server some time to acknowledge the change in semaphre state.
       
       // *** Blocks here until server releases semaphore ***
-      if (printInfo == true) _PRINTSTD << " MAGMA_EVD_CLIENT Info: Waiting on the server thread to sem_post() so client can copy back memory" << std::endl  ;
+  _PRINTSTD << "----- 0000 In Here 0000 -------   " << std::endl  ;
+         std::flush(_PRINTSTD) ;
       sem_wait(shrd_client->_sem_id);  
-      if (printInfo == true) _PRINTSTD << " MAGMA_EVD_CLIENT Info: sem_wait() was called " << std::endl  ;
-      
+  _PRINTSTD << "----- 0000 In Here 0000 -------   " << std::endl  ;
+         std::flush(_PRINTSTD) ;
+    
       
       // Create storage for the eigenvalues to be returned to R
-      Rcpp::NumericVector rvalues(matrix.ncol()) ;      
-     // Copy back the eigen values
+      Rcpp::NumericMatrix invmat(matrix.length()) ;      
+     // Copy back the inverse values
       // offset to get evalues is numbytes 
-      shrd_client->copy_shmem_into_matrix(rvalues.begin(), rvalues.length() * sizeof(double) , numbytes) ;
-      std::reverse(rvalues.begin(),rvalues.end())   ; // inplace reverse of the eigenvalues    //Original R version: ord <- rev(seq_along(z$values))
+      shrd_client->copy_shmem_into_matrix(invmat.begin(), invmat.length() * sizeof(double) , 0) ;
+      // AWG ---> not sure which is correct shrd_client->copy_shmem_into_matrix(invmat.begin(), invmat.length() * sizeof(double) , numbytes) ;
           
-      if (printInfo == true) _PRINTSTD << " MAGMA_EVD_CLIENT Info: has copied the rvalues data from shared memory" << std::endl  ;  
-      if (shrd_client->_weWantVectors == WANTVECTORS)
-    	{
-        if (overwrite==true) {
-          shrd_client->copy_shmem_into_matrix(matrix.begin(), matrix.ncol() * matrix.ncol() * sizeof(double) , 0) ;
-          shrd_client->copy_matrix_inplace_reverse_rows(matrix.begin(), matrix.nrow()) ;
-          Rcpp::CharacterVector retInfoAboutEvects("Eigen vectors have been returned in the input matrix")  ;
-          return (Rcpp::List::create(  Rcpp::Named("values") = rvalues,  // pcascores->_scores,  // corrected_scores,
-                                       Rcpp::Named("vectors") = retInfoAboutEvects )) ;
-        }
-        else
-        {
-          Rcpp::NumericMatrix vectors(matrix.ncol(),matrix.ncol()) ;  // create the output matrix
-         // shrd_client->copy_shmem_into_matrix_reverse_cols(vectors.begin(), vectors.nrow()) ;  // place eignevectors in the original input matrix and return to user
-         // shrd_client->copy_matrix_inplace_reverse_rows(vectors.begin(), vectors.nrow()) ;
-          shrd_client->copy_shmem_into_matrix(vectors.begin(), vectors.ncol() * vectors.ncol() * sizeof(double) , 0) ;
-          shrd_client->copy_matrix_inplace_reverse_rows(vectors.begin(), vectors.nrow()) ;
-         // shrd_client->copy_matrix_inplace_reverse_cols(vectors.begin(), vectors.nrow()) ;
-          return (Rcpp::List::create(  Rcpp::Named("values") = rvalues,  // pcascores->_scores,  // corrected_scores,
-                                       Rcpp::Named("vectors") = vectors )) ;
-        }    		
-        
-    	}
-    	else
-    	{
-    		return (Rcpp::List::create(  Rcpp::Named("values") = rvalues )) ;
-    	}
-         
+    return (invmat ) ;
+   
+
+ 
+    // try 
     } catch (...) {
-     _PRINTSTD << " MAGMA_EVD_CLIENT Info: eigen_nonsym_mgpu(): Fell into catch block " << std::endl  ;
+     _PRINTSTD << " MAGMA_EVD_CLIENT Info: solve_mgpu(): Fell into catch block " << std::endl  ;
       std::flush(_PRINTSTD) ;
       CleanupSharedMemory() ;
-      return (Rcpp::List::create(  Rcpp::Named("values") = "",  // pcascores->_scores,  // corrected_scores,
-                                  Rcpp::Named("vectors") = "" )) ;
+      return (0);
     }
   } else {
-    Rcpp::stop(" MAGMA_EVD_CLIENT Error: eigen_nonsym_mgpu() failed as the client CSharedMemory object is NULL (User possibly needs to call RunServer())") ;
-    // return("Error: nonsyevdx_client_fill_matrix failed as Client CSharedMemory object is NULL (User possibly needs to call RunServer())") ;
+    Rcpp::stop(" MAGMA_EVD_CLIENT Error: solve_mgpu() failed as the client CSharedMemory object is NULL (User possibly needs to call RunServer())") ;
+    // return("Error: solve_client_fill_matrix failed as Client CSharedMemory object is NULL (User possibly needs to call RunServer())") ;
   }
 	
 }

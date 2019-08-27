@@ -1,0 +1,4 @@
+platform=NVidia  // main options are: NVidia AMD Intel
+device=gpu     // options are: gpu acc cpu
+
+

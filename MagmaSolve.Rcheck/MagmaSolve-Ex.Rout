@@ -1,0 +1,158 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> pkgname <- "MagmaSolve"
+> source(file.path(R.home("share"), "R", "examples-header.R"))
+> options(warn = 1)
+> library('MagmaSolve')
+Loading required package: Rcpp
+> 
+> base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
+> base::assign(".old_wd", base::getwd(), pos = 'CheckExEnv')
+> cleanEx()
+> nameEx("MagmaSolve")
+> ### * MagmaSolve
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: MagmaSolve
+> ### Title: MagmaSolve - provides a fast replacement for the eigen()
+> ###   function, using a 2 stage GPU based MAGMA library routine. Also
+> ###   provides a function that returns the sqrt and inverse sqrt of an
+> ###   input matrix.
+> ### Aliases: MagmaSolve
+> ### Keywords: MagmaSolve, magma, MAGMA, eigen, GPU, EVD
+> 
+> ### ** Examples
+> 
+> # setup
+> set.seed(101)
+> n <- 5
+> ngpu <- 4
+> K <- matrix(sample(1:100, n*n, TRUE), nrow=n)
+> res  <- tcrossprod(K)
+> 
+> # CPU based
+>  library(MagmaSolve)
+>  MagmaSolve::RunServer( matrixMaxDimension=n,  numGPUsWanted=ngpu, memName="/syevd_mem", semName="/syevd_sem", print=0)
+[1] 0
+> 
+>   print("A")
+[1] "A"
+>   print(res[1:5,1:5])
+      [,1]  [,2]  [,3]  [,4]  [,5]
+[1,] 37320 24804 25371 19030 26109
+[2,] 24804 24893 21342 16808 17192
+[3,] 25371 21342 19946 14247 17103
+[4,] 19030 16808 14247 16068 14645
+[5,] 26109 17192 17103 14645 23054
+>   print("A^-1")
+[1] "A^-1"
+>   print(solve(res)[1:5,1:5])
+              [,1]          [,2]          [,3]          [,4]          [,5]
+[1,]  0.0017462950  0.0023345625 -0.0038665071 -7.293255e-04 -3.869164e-04
+[2,]  0.0023345625  0.0039364131 -0.0059958078 -1.271199e-03 -3.238006e-04
+[3,] -0.0038665071 -0.0059958078  0.0095789065  1.825321e-03  5.843107e-04
+[4,] -0.0007293255 -0.0012711988  0.0018253210  6.049159e-04  3.552316e-05
+[5,] -0.0003869164 -0.0003238006  0.0005843107  3.552316e-05  2.669852e-04
+>   invGPU  <- MagmaSolve::solve_mgpu(res)
+----- 0000 In Here 0000 -------   
+% MAGMA 2.5.1 alpha1 compiled for CUDA capability >= 3.0, 64-bit magma_int_t, 64-bit pointer.
+% CUDA runtime 9000, driver 10010. OpenMP threads 16. MKL 2017.0.2, MKL threads 16. 
+% device 0: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
+% device 1: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
+% device 2: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
+% device 3: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
+% Wed Aug 28 07:57:03 2019
+Check: contents of d_A ----- : --->   
+[
+ 37320.0000 24804.0000 25371.0000 19030.0000 26109.0000
+ 24804.0000 24893.0000 21342.0000 16808.0000 17192.0000
+ 25371.0000 21342.0000 19946.0000 14247.0000 17103.0000
+ 19030.0000 16808.0000 14247.0000 16068.0000 14645.0000
+ 26109.0000 17192.0000 17103.0000 14645.0000 23054.0000
+];
+About to start magma_dgetrf_gpu ..... 
+0
+About to start magma_dgetri_gpu ..... 
+CUDA runtime error: an illegal memory access was encountered (77) in magmablas_dtrsm at /flush2/ben324/build/magma-2.5.1-alpha1/magmablas/dtrsm.cu:484
+CUDA runtime error: an illegal memory access was encountered (77) in magmablas_dtrsm at /flush2/ben324/build/magma-2.5.1-alpha1/magmablas/dtrsm.cu:485
+CUDA runtime error: an illegal memory access was encountered (77) in magma_dgetri_gpu at /flush2/ben324/build/magma-2.5.1-alpha1/src/dgetri_gpu.cpp:164
+CUDA runtime error: an illegal memory access was encountered (77) in magma_queue_destroy_internal at /flush2/ben324/build/magma-2.5.1-alpha1/interface_cuda/interface.cpp:944
+CUDA runtime error: an illegal memory access was encountered (77) in magma_queue_destroy_internal at /flush2/ben324/build/magma-2.5.1-alpha1/interface_cuda/interface.cpp:945
+CUDA runtime error: an illegal memory access was encountered (77) in magma_queue_destroy_internal at /flush2/ben324/build/magma-2.5.1-alpha1/interface_cuda/interface.cpp:946
+ Info === 0
+Contents of A that sits in GPU land AFTER inverse  
+CUBLAS error: memory mapping error (11) in magma_dprint_gpu at /flush2/ben324/build/magma-2.5.1-alpha1/control/dprint.cpp:152
+CUDA runtime error: an illegal memory access was encountered (77) in server_compute_solve_mgpu at shmem_solve_server.cpp:432
+CUDA runtime error: an illegal memory access was encountered (77) in server_compute_solve_mgpu at shmem_solve_server.cpp:434
+[
+   0.       0.       0.       0.       0.    
+   0.       0.       0.       0.       0.    
+   0.       0.       0.       0.       0.    
+   0.       0.       0.       0.       0.    
+   0.       0.       0.       0.       0.    
+];
+Wow  
+----- 0000 In Here 0000 -------   
+> 
+>  ## CPU 
+>    invCPU  <- solve(res)
+> 
+> 
+>    print(invGPU[1:5, 1:5])
+      [,1] [,2] [,3] [,4] [,5]
+[1,] 37320    0    0    0    0
+[2,] 24804    0    0    0    0
+[3,] 25371    0    0    0    0
+[4,] 19030    0    0    0    0
+[5,] 26109    0    0    0    0
+>    print("---------------------")
+[1] "---------------------"
+>    print(invCPU[1:5, 1:5])
+              [,1]          [,2]          [,3]          [,4]          [,5]
+[1,]  0.0017462950  0.0023345625 -0.0038665071 -7.293255e-04 -3.869164e-04
+[2,]  0.0023345625  0.0039364131 -0.0059958078 -1.271199e-03 -3.238006e-04
+[3,] -0.0038665071 -0.0059958078  0.0095789065  1.825321e-03  5.843107e-04
+[4,] -0.0007293255 -0.0012711988  0.0018253210  6.049159e-04  3.552316e-05
+[5,] -0.0003869164 -0.0003238006  0.0005843107  3.552316e-05  2.669852e-04
+>  
+>   StopServer()  # Client signals to server to terminate
+ MAGMA_EVD_CLIENT Info: CSharedMemory->ExitServer() has just requested server to exit 
+ MAGMA_EVD_CLIENT Info: Calling destructor of shrd_client object
+>   
+> 
+> 
+> 
+> 
+> ### * <FOOTER>
+> ###
+> cleanEx()
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  0.137 0.016 3.548 0 0.003 
+> grDevices::dev.off()
+null device 
+          1 
+> ###
+> ### Local variables: ***
+> ### mode: outline-minor ***
+> ### outline-regexp: "\\(> \\)?### [*]+" ***
+> ### End: ***
+> quit('no')

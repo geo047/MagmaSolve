@@ -7,7 +7,7 @@ using namespace Rcpp;
 
 // StopServer
 void StopServer();
-RcppExport SEXP MagmaEigenNonsym_StopServer() {
+RcppExport SEXP MagmaSolve_StopServer() {
 BEGIN_RCPP
     StopServer();
     return R_NilValue;
@@ -15,7 +15,7 @@ END_RCPP
 }
 // CleanupSharedMemory
 int CleanupSharedMemory();
-RcppExport SEXP MagmaEigenNonsym_CleanupSharedMemory() {
+RcppExport SEXP MagmaSolve_CleanupSharedMemory() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -25,7 +25,7 @@ END_RCPP
 }
 // GetServerArgs
 std::string GetServerArgs(int matrixDimension, bool withVectors, int numGPUsWanted, std::string memName, std::string semName, int printDetails);
-RcppExport SEXP MagmaEigenNonsym_GetServerArgs(SEXP matrixDimensionSEXP, SEXP withVectorsSEXP, SEXP numGPUsWantedSEXP, SEXP memNameSEXP, SEXP semNameSEXP, SEXP printDetailsSEXP) {
+RcppExport SEXP MagmaSolve_GetServerArgs(SEXP matrixDimensionSEXP, SEXP withVectorsSEXP, SEXP numGPUsWantedSEXP, SEXP memNameSEXP, SEXP semNameSEXP, SEXP printDetailsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< int >::type matrixDimension(matrixDimensionSEXP);
@@ -38,9 +38,10 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// eigen_nonsym_mgpu
-Rcpp::List eigen_nonsym_mgpu(Rcpp::NumericMatrix matrix, bool symmetric, bool only_values, bool overwrite, bool printInfo);
-RcppExport SEXP MagmaEigenNonsym_eigen_nonsym_mgpu(SEXP matrixSEXP, SEXP symmetricSEXP, SEXP only_valuesSEXP, SEXP overwriteSEXP, SEXP printInfoSEXP) {
+
+
+Rcpp::NumericMatrix solve_mgpu(Rcpp::NumericMatrix matrix, bool symmetric, bool only_values, bool overwrite, bool printInfo);
+RcppExport SEXP MagmaSolve_solve_mgpu(SEXP matrixSEXP, SEXP symmetricSEXP, SEXP only_valuesSEXP, SEXP overwriteSEXP, SEXP printInfoSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type matrix(matrixSEXP);
@@ -48,12 +49,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type only_values(only_valuesSEXP);
     Rcpp::traits::input_parameter< bool >::type overwrite(overwriteSEXP);
     Rcpp::traits::input_parameter< bool >::type printInfo(printInfoSEXP);
-    rcpp_result_gen = Rcpp::wrap(eigen_nonsym_mgpu(matrix, symmetric, only_values, overwrite, printInfo));
+    rcpp_result_gen = Rcpp::wrap(solve_mgpu(matrix, symmetric, only_values, overwrite, printInfo));
     return rcpp_result_gen;
 END_RCPP
 }
-
-
-
 
 

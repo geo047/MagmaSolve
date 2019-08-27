@@ -1,0 +1,25 @@
+* installing *source* package ‘MagmaSolve’ ...
+** using staged installation
+** libs
+make: Nothing to be done for 'all'.
+make: 'symbols.rds' is up to date.
+installing to /home/geo047/Magma/MagmaSolve/MagmaSolve.Rcheck/00LOCK-MagmaSolve/00new/MagmaSolve/libs
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+** building package indices
+** testing if installed package can be loaded from temporary location
+rm -f shmem_solve_server.o CStringManipulation.o
+rm -f solve_server ../bin/solve_server.exe 
+MAGMA_EVD_CLIENT Info: MakeServer() called as:  cd /home/geo047/Magma/MagmaSolve/MagmaSolve.Rcheck/00LOCK-MagmaSolve/00new/MagmaSolve/src ;  env MAGMA_HOME=/apps/magma/2.5.1a1-ipl64-cuda90 CUDA_ROOT=/apps/cuda/9.0.176  make all
+icpc -g -O3 -xHost -I../include  -I/apps/cuda/9.0.176/include -I/apps/magma/2.5.1a1-ipl64-cuda90/include  -DMAGMA_ILP64  -D_WITH_CUDA=1  -c -o shmem_solve_server.o shmem_solve_server.cpp
+icpc -g -O3 -xHost -I../include  -I/apps/cuda/9.0.176/include -I/apps/magma/2.5.1a1-ipl64-cuda90/include  -DMAGMA_ILP64  -D_WITH_CUDA=1  -c -o CStringManipulation.o CStringManipulation.cpp
+icpc  -o solve_server.exe shmem_solve_server.o CStringManipulation.o  -lOpenCL -L/apps/magma/2.5.1a1-ipl64-cuda90/lib -Wl,-rpath,/apps/magma/2.5.1a1-ipl64-cuda90/lib -lmagma  -lcuda -lcudart -Wl,-rpath,/apps/intel/mkl/2017.2.174/compilers_and_libraries_2017.2.174/linux/mkl/lib/intel64_lin  -lmkl_intel_ilp64    -lpthread -lrt 
+mkdir -p ../bin
+mv solve_server.exe ../bin
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (MagmaSolve)

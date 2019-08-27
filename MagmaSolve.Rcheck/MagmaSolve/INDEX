@@ -1,0 +1,22 @@
+GetServerArgs           Initialise shared memory on client and obtain
+                        server launch string.
+MagmaSolve              MagmaSolve - provides a fast replacement for
+                        the eigen() function, using a 2 stage GPU based
+                        MAGMA library routine. Also provides a function
+                        that returns the sqrt and inverse sqrt of an
+                        input matrix.
+MakeServer              Creates the server executable.
+RunServer               Creates the R client side shared memory region
+                        and then launches a server process which is
+                        given access to the shared region. The server
+                        then waits for the R client to give it a matrix
+                        on which it will compute the eigenvalue
+                        decomposition of useing a syevdx_2stage MAGMA
+                        library function.
+StopServer              Function signals to the server through shared
+                        memory region to terminate from its main loop
+                        and then deletes the client CSharedMemory
+                        object
+solve_mgpu              Function used to obtain the eigenvalue
+                        decomposition (EVD) of a non-symmetric matrix
+                        using a MAGMA 2-stage multi-gpu EVD algorithm

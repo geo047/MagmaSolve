@@ -1,5 +1,4 @@
 
-
 #include <math.h>   //  cmath does not have isnan() ?
 #include <string.h>
 
@@ -7,7 +6,6 @@
 #include <fstream>
 #include <sstream>
 
-#include <magma.h>
 // #include <magma_threadsetting.h> // requires -I<MAGMA_HOME>/control  - magma_threadsetting.h
 
 #if defined _WITH_CUDA   
@@ -44,15 +42,17 @@
 #include  "CStringManipulation.h"
  
 
+# include <cuda_runtime.h>
+# include "magma_v2.h"
+# include "magma_lapack.h"
+
+
+
 // Function definitions
 int  server_init( std::string pathString, bool print )  ;
 std::string Get_ERROR_STR( int  errorin ) ;
 void server_close( )  ;
-
-int server_compute_dgeev_mgpu(  hideprintlog hideorprint  ) ;  // This function internally uses the static CSharedRegion * shrd_server object
-int server_compute_syevdx_mgpu(  hideprintlog hideorprint  ) ;  // This function internally uses the static CSharedRegion * shrd_server object
 int server_compute_solve_mgpu(  hideprintlog hideorprint  ) ;  // This function internally uses the static CSharedRegion * shrd_server object
-
 int print_devices( bool print_num_bool, std::string pathString) ;
 int GetNumDevicesUsingOpenCL(std::string plat_str, int clDevType ) ;
 int GetNumDevicesUsingOpenCL_C(std::string plat_str, int clDevType ) ;
@@ -63,90 +63,30 @@ static CSharedRegion * shrd_server = NULL ;
 // External Function definitions
 extern "C" {
 magma_int_t 
-magma_dgeev_m	(	magma_vec_t 	jobvl,
-magma_vec_t 	jobvr,
-magma_int_t 	n,
-double * 	A,
-magma_int_t 	lda,
-double * 	wr,
-double * 	wi,
-double * 	VL,
-magma_int_t 	ldvl,
-double * 	VR,
-magma_int_t 	ldvr,
-double * 	work,
-magma_int_t 	lwork,
-magma_int_t * 	info 
-);		
-
-extern magma_int_t 
-magma_dgeev	(	magma_vec_t 	jobvl,
-magma_vec_t 	jobvr,
-magma_int_t 	n,
-double * 	A,
-magma_int_t 	lda,
-double * 	wr,
-double * 	wi,
-double * 	VL,
-magma_int_t 	ldvl,
-double * 	VR,
-magma_int_t 	ldvr,
-double * 	work,
-magma_int_t 	lwork,
-magma_int_t * 	info 
-);		
-
-
-magma_int_t
-magma_dsyevdx_2stage(
-    magma_vec_t jobz, magma_range_t range, magma_uplo_t uplo,
-    magma_int_t n,
-    double *A, magma_int_t lda,
-    double vl, double vu, magma_int_t il, magma_int_t iu,
-    magma_int_t *mout, double *w,
-    double *work, magma_int_t lwork,
-    magma_int_t *iwork, magma_int_t liwork,
-    magma_int_t *info);
-
-extern magma_int_t
-magma_dsyevdx_2stage_m(
-    magma_int_t ngpu,
-    magma_vec_t jobz, magma_range_t range, magma_uplo_t uplo,
-    magma_int_t n,
-    double *A, magma_int_t lda,
-    double vl, double vu, magma_int_t il, magma_int_t iu,
-    magma_int_t *mout, double *w,
-    double *work, magma_int_t lwork,
-    #ifdef COMPLEX
-    double *rwork, magma_int_t lrwork,
-    #endif
-    magma_int_t *iwork, magma_int_t liwork,
-    magma_int_t *info);
-
-
-extern magma_int_t 
-magma_dgetri_gpu(magma_int_t n,
+magma_dgetri_gpu ( magma_int_t n,
 magmaDouble_ptr dA,
 magma_int_t ldda,
 magma_int_t*  ipiv,
-magmaDouble_ptr  dwork,
+magmaDouble_ptr dwork,
 magma_int_t lwork,
 magma_int_t* info 
-)	
-
-
-
-
-
-
+);	
+magma_int_t magma_dgetrf_gpu(magma_int_t m,
+magma_int_t n,
+magmaDouble_ptr dA,
+magma_int_t ldda,
+magma_int_t * ipiv,
+magma_int_t * info 
+);
+magma_int_t magma_dgetrf_m( magma_int_t ngpu,
+magma_int_t m,
+magma_int_t n,
+double *A,
+magma_int_t lda,
+magma_int_t *ipiv,
+magma_int_t *info 
+);
 }
-
-
-
-
-
-
-
 
 
 
@@ -165,7 +105,7 @@ void PrintUsage(std::string progName)
 
 
  // struct arg_list is defined in CSharedRegion.h
-struct arg_list get_dgeev_args(int argc, char* argv[])
+struct arg_list get_solve_args(int argc, char* argv[])
 {
 	int opt;
 	struct arg_list ret_list ;
@@ -243,7 +183,7 @@ void EraseFromLast(std::string & resStr, std::string findStr )
 /*! 
  * main() entry point to Server C/C++ version of the code.
  * The client should start the server using a system call similar to:
- * 		> ddgeev_server -n 10000 -v 1 -g 3 -m /syevx_<PID_of_client> -s /sem_<PID_of_client> 
+ * 		> solver_server -n 10000 -v 1 -g 3 -m /syevx_<PID_of_client> -s /sem_<PID_of_client> 
  * 		Where:
  * 		-n = 10000 	- matrix size is 10000
  * 		-v = 1 		- we want eigenvectors returned (or 0 for just eigenvalues)
@@ -261,7 +201,7 @@ int main(int argc, char* argv[])
  
   /// the path is required so we can obtain the file <path to package install>/extdata/platformstring.txt to read in what platform the user wants
   std::string pathstr ; 
-	main_args = get_dgeev_args(argc, argv) ; 
+	main_args = get_solve_args(argc, argv) ; 
   pathstr.append(argv[0]) ;
   EraseFromLast (pathstr,SYSTEMDIRDELIM) ;
   EraseFromLast (pathstr,SYSTEMDIRDELIM) ;
@@ -279,7 +219,7 @@ int main(int argc, char* argv[])
 	{
 		if (numgpuavail == 0) 
 		{
-			ss_string << " MAGMA_EVD_SERVER Error: Number of gpus available is 0. ddgeev_server will now exit" ;
+			ss_string << " MAGMA_EVD_SERVER Error: Number of gpus available is 0. solve_server will now exit" ;
 			server_close() ;
       exit(EXIT_FAILURE);
       //error_and_die(ss_string.str());
@@ -341,12 +281,12 @@ int main(int argc, char* argv[])
            // shrd_server->PrintObjectDetails( false ) ;  // to log file == true 
             std::flush(std::cout) ;
           }
-          syevd_info = server_compute_dgeev_mgpu( main_args.msgChannel ) ;
+          syevd_info = server_compute_solve_mgpu( main_args.msgChannel ) ;
           if (syevd_info != 0)  
           {
             sem_post(shrd_server->_sem_id) ;
             ss_string << " MAGMA_EVD_SERVER Error: Error from: " << argv[0] ;
-            ss_string << " info != 0 returned from server_compute_dgeev_mgpu() " << std::endl  ;
+            ss_string << " info != 0 returned from server_compute_solve_mgpu() " << std::endl  ;
             ss_string << "N.B. IF Error numer = Bad address then GPU possibly ran out of memory." << std::endl   ;
             ss_string << "Then increase physical GPU memory or increase numGPUsWanted in RunServer()." << std::endl  ;
             error_and_die(ss_string.str());
@@ -370,199 +310,136 @@ int main(int argc, char* argv[])
  }
 
 
+
+
 // This is the modified original La_rs() code, with added magma 2stage non-symmetric eigenvalue decomposition
 // N.B. It makes a copy of the input matrix data - 
 // All data is passed in via the static CSharedRegion object shrd_server
-int server_compute_dgeev_mgpu( hideprintlog hideorprint )
+int server_compute_solve_mgpu( hideprintlog hideorprint )
 {
-  
   magma_int_t n, n2,  lwork2, info = 0;  // define MAGMA_ILP64 to get these as 64 bit integers
-	magma_vec_t jobv ;  // tell the function if we want eigenvectors or not
-	if (shrd_server->_weWantVectors == WANTVECTORS)
-		jobv = MagmaVec;  // we want vectors returned, not just eigenvalues
-	else
-		jobv = MagmaNoVec ;
-	magma_uplo_t uplo =  MagmaLower; // MagmaUpper;	
-	magma_range_t range = magma_range_const('A') ; // MagmaRangeAll ;
-	
-	double fraction = 1.0 ;
-  double  *rvectors_ptr, *rvalues_ptr ;
-  magma_int_t liwork, *iwork, m;
-  double vl = 0.0, vu = 0.0, abstol = 0.0;
-  
- 
-    
+
+  magma_print_environment();
+
+
+  // Initialize the queue
+   magma_queue_t queue = NULL ;
+   magma_int_t dev =0;
+   magma_queue_create(dev,&queue);
+   magma_int_t ngpu=4;   // -------> this needs to be changed. 
+
+
+
   if (shrd_server == NULL)
   {
     std::cerr << " MAGMA_EVD_SERVER Error: server_compute_dgeev_mgpu(): shrd_server object is NULL" << std::endl ;
     return(-1) ;
   }
   
-	n = shrd_server->_matrix_dim ;
-	n2     = n*n;
-	magma_int_t il = 1;
-	magma_int_t iu = n;
-	il = 1;
-	iu = (magma_int_t) (n);
-
-  if (hideorprint == PRINT) {
-  	std::cout << " MAGMA_EVD_SERVER Info: dgeev  called using: jobv = " << lapack_vec_const(jobv) ;
-  	std::cout << " , range = "  << lapack_range_const(range) ;
-  	std::cout << " , uplo = " << lapack_uplo_const(uplo) ;
-  	std::cout << ", fraction = " << fraction ;
-  	std::cout << ", numgpus = " << shrd_server->_numgpus << std::endl ;
-  	std::cerr << " MAGMA_EVD_SERVER:  sizeof(magma_int_t)= " << sizeof(magma_int_t)  << std::endl ;
-  }
-	
-	// We could create a copy of the input matrix, in 'pinned' memory
-	// rvectors_ptr (was h_R) will initially be a copy of the input matrix  // TESTING_MALLOC_PIN( h_R,    double, n2    );
-	/*if ( MAGMA_SUCCESS != magma_malloc_pinned( (void**) &rvectors_ptr, (n2)*sizeof(double) )) {       
-		shrd_server->error_and_die("Error magma_dgeev_mgpu(): !!!! magma_malloc_pinned failed for: rvectors_ptr") ; 		                                                           
-	}*/
-	
-	//Rcpp::NumericVector rvalues(n) 	 ;
-	rvalues_ptr = shrd_server->_values ;
-	rvectors_ptr = shrd_server->_vectors ;  // was rx
+  n = shrd_server->_matrix_dim ;
+  n2 = n*n;
 
 
-       // AWG
-       // Make copy of rvectors_ptr => *A 
-       double *A;
-       magma_dmalloc_cpu(&A, n2);   // to house data that will be lost 
-       for(int i=0; i<n2; i++){
-          A[i] = rvectors_ptr[i];
-       }
-	
-  // ask for optimal size of work arrays 
-  // ----> lwork = -1; liwork = -1;
-  // magma_int_t threads = magma_get_parallel_numthreads();  // magma_get_parallel_numthreads() requires -I$MAGMA_HOME/control and 
-  magma_int_t threads = 1;
-#if defined(_OPENMP)
-        #pragma omp parallel
-        {
-            threads = omp_get_num_threads();
-        }
-#endif
-        
-  bool b_wantVects = false ;
-  if ( shrd_server->_weWantVectors == WANTVECTORS)
-   b_wantVects = true ;
-   
-// ---->   magma_dgeev_getworksize(n, threads, b_wantVects, &lwork, &liwork); 
-   
-  // AWG
-  // get work size
-  magma_int_t lda, LDVL, LDVR;
-  LDVL=n;
-  LDVR=n;
-  lda   = n;
-  n2    = lda*n;
-  double *wr;
-     if ( MAGMA_SUCCESS != magma_dmalloc_cpu(&wr, n) )
-     {
-        shrd_server->error_and_die(" MAGMA_EVD_SERVER Error: magma_dgeev_mgpu() magma_dmalloc_cpu failed for: wr " );
-     }
-  double *wl;
-     if ( MAGMA_SUCCESS != magma_dmalloc_cpu(&wl, n) )
-     {
-        shrd_server->error_and_die(" MAGMA_EVD_SERVER Error: magma_dgeev_mgpu() magma_dmalloc_cpu failed for: wl " );
-     }
-  double *VL;
-     if ( MAGMA_SUCCESS != magma_dmalloc_cpu(&VL,  LDVL*n) )
-     {
-        shrd_server->error_and_die(" MAGMA_EVD_SERVER Error: magma_dgeev_mgpu() magma_dmalloc_cpu failed for: VL " );
-     }
-  double *VR;
-     if ( MAGMA_SUCCESS != magma_dmalloc_cpu(&VR,  LDVR*n) )
-     {
-        shrd_server->error_and_die(" MAGMA_EVD_SERVER Error: magma_dgeev_mgpu() magma_dmalloc_cpu failed for: VR " );
-     }
-  magma_int_t lwork = -1;
-  double work[1];   
+  // Getting data from R land
+  double *rvectors_ptr;
+  rvectors_ptr = shrd_server->_vectors ;  // was rx
 
 
-  // get optimal workspace size  
-   magma_dgeev(MagmaVec, MagmaNoVec, n, NULL, lda, NULL, NULL, NULL, LDVL, NULL, LDVR, work, -1, &info );	
+  /* Variables that need setting are
+  Scalars
+  -----------
+  ldwork - size of dwork
 
-   lwork = work[0];
-   double *h_work;
-     if ( MAGMA_SUCCESS != magma_dmalloc_cpu(&h_work, lwork) )
-     {
-        shrd_server->error_and_die(" MAGMA_EVD_SERVER Error: magma_dgeev_mgpu() magma_dmalloc_cpu failed for: h_work  " );
-     }
- 
-  // Perform analysis 
-  if (shrd_server->_numgpus == 1) {
-       magma_dgeev(MagmaNoVec, MagmaVec, n, A, lda, rvalues_ptr, wl, VL, LDVL, rvectors_ptr, LDVR, h_work,
-                      lwork, &info);
-  } else {
-       magma_dgeev_m(MagmaNoVec, MagmaVec, n, A, lda, rvalues_ptr, wl, VL, LDVL, rvectors_ptr, LDVR, h_work,
-                      lwork, &info);
-  }
+  Arrays
+  -------
+  dwork  - double work array
+  ipiv   - int work array  
+  h_A    - CPU based array data
+  d_A    - GPU based array data
+
+
+  Unified memory version
+  -------------------------
+  cudaMallocManaged (&a,mm* sizeof ( double )); // unified mem. for a
+  cudaMallocManaged (&r,mm* sizeof ( double )); // unified mem. for r
+  cudaMallocManaged (&c,mm* sizeof ( double )); // unified mem. for c
+  cudaMallocManaged (& dwork , ldwork * sizeof ( double )); // mem. dwork
+  cudaMallocManaged (& piv ,m* sizeof ( int )); // unified mem. for ipiv
+
+
+  */
+
+
+// Setting of A
+double *A;
+magma_dmalloc_cpu( &A, n2);  // CPU based memory
+//cudaMallocManaged(&A, n2* sizeof ( double )); // unified mem. for a
+for (int i=0; i<n2; i++){
+  A[i] = rvectors_ptr[i];
+}
+
+
+// Setting of d_A memory on GPU device
+double *d_A;
+magma_dmalloc_pinned(&d_A, n2);
+// copy A into d_A 
+magma_dsetmatrix ( n, n, A,n, d_A ,n, queue );
+
+std::cout << "Check: contents of d_A ----- : --->   " << std::endl;
+magma_dprint_gpu(5,5, d_A, n , queue);
+
+
+// Setting of dwork
+double *dwork;
+magma_int_t ldwork ; 
+ldwork = n * magma_get_dgetri_nb ( n ); // optimal block size
+//cudaMallocManaged (& dwork , ldwork * sizeof ( double )); // mem. dwork
+magma_dmalloc_cpu(&dwork, ldwork);  //sitting in GPU land
+
+
+// Setting of ipiv workspace object
+magma_int_t *ipiv;
+//  cudaMallocManaged (& ipiv ,n* sizeof ( int )); // unified mem. for ipiv
+ magma_imalloc_cpu( &ipiv,   n      );
+
+
+//magma_int_t  ldda;
+//ldda   = magma_roundup( n, 32 );  // multiple of 32 by default
+
+
+
+std::cout << "About to start magma_dgetrf_gpu ..... " << std::endl;
+// magma_dgetrf_gpu(n, n, d_A, n, ipiv, &info);
+magma_dgetrf_m(ngpu, n, n, d_A, n, ipiv, &info);
+std::cout << info << std::endl;
+
+
+
+std::cout << "About to start magma_dgetri_gpu ..... " << std::endl;
+magma_dgetri_gpu(n,d_A,n,ipiv,dwork,ldwork,&info);
+
+std::cout << " Info === " << info << std::endl; 
+
+
+std::cout << "Contents of A that sits in GPU land AFTER inverse  " << std::endl;
+magma_dprint_gpu(5,5, d_A, n , queue);
 
 
 
 
-magma_free_cpu( h_work);
-magma_free_cpu( A);
-magma_free_cpu( wr);
-magma_free_cpu( wl);
-magma_free_cpu( VL);
-magma_free_cpu( VR);
 
 
+ magma_free(dwork);
+ magma_free_cpu(ipiv);
+ magma_free(A);
 
-return (info) ;
+
+std::cout << "Wow  "  << std::endl;
+
+return info ;
  
 
- 
-	if ( MAGMA_SUCCESS != magma_malloc_pinned( (void**) &work, (lwork)*sizeof(double) )) 
-	{      
-		shrd_server->error_and_die(" MAGMA_EVD_SERVER Error: magma_dgeev_mgpu() magma_malloc_pinned failed for: work" );                                                         
-	}
 
-	if ( MAGMA_SUCCESS != magma_malloc_cpu( (void**) &iwork, (liwork)*sizeof(magma_int_t) )) {      
-		shrd_server->error_and_die("MAGMA_EVD_SERVER Error: magma_dgeev_mgpu() magma_malloc_cpu failed for: iwork" );                                                          
-	}		
-	
-	m = 0; 
-	if (hideorprint == PRINT) std::cout << "About to call magma_dgeev()..."<< std::endl ;
-   
-	if (shrd_server->_numgpus == 1) {
-      //printf("calling dgeev 1 GPU\n");
-      magma_dsyevdx_2stage( jobv, range, uplo, n, 
-                      rvectors_ptr, n, 
-                      vl, vu, il, iu, 
-                      &m, rvalues_ptr, 
-                      work, lwork, 
-                      iwork, liwork, 
-                      &info);	
-  } else {
-      //printf("calling dgeev_m %ld GPU\n", (long int) opts.ngpu);
-      magma_dsyevdx_2stage_m(shrd_server->_numgpus, jobv, range, uplo, n, 
-                      rvectors_ptr, n, 
-                      vl, vu, il, iu, 
-                      &m, rvalues_ptr, 
-                      work, lwork, 
-                      iwork, liwork, 
-                      &info);
-  }
-  
-  if (hideorprint == PRINT)
-  {
-    std::cout << "The largest 4 eigenvalues found"<< std::endl ;
-    for (int t1 = 1 ; t1 < 5 ; t1++)
-    {
-      std::cout << rvalues_ptr[n-t1] << ",\t" ;
-    }
-    std::cout << std::endl ;
-  }
-  
-  magma_free_cpu (iwork)  ;
-  magma_free_pinned(work) ;
-   
-	return (info) ;
-	
 }
 
 void server_close( ) 
@@ -781,15 +658,15 @@ int print_devices( bool print_num_bool, std::string pathString)
       int major, minor;
       CUdevice dev;
 
-	  //Rcpp::Rcout << "MagmaEigenNonsym: cuDeviceGet():" << std::endl ;
+	  //Rcpp::Rcout << "rcppMagma: cuDeviceGet():" << std::endl ;
       cuDeviceGet( &dev, idevice );
-	  //Rcpp::Rcout << "MagmaEigenNonsym: cuDeviceGetName():" << std::endl ;
+	  //Rcpp::Rcout << "rcppMagma: cuDeviceGetName():" << std::endl ;
       cuDeviceGetName( name, sizeof(name), dev );
-	  //Rcpp::Rcout << "MagmaEigenNonsym: cuDeviceComputeCapability():" << std::endl ;
+	  //Rcpp::Rcout << "rcppMagma: cuDeviceComputeCapability():" << std::endl ;
       cuDeviceComputeCapability( &major, &minor, dev );
-	  //Rcpp::Rcout << "MagmaEigenNonsym: cuDeviceTotalMem():" << std::endl ;
+	  //Rcpp::Rcout << "rcppMagma: cuDeviceTotalMem():" << std::endl ;
       cuDeviceTotalMem( &totalMem, dev );
-	  //Rcpp::Rcout << "MagmaEigenNonsym: cuDeviceGetAttribute():" << std::endl ;
+	  //Rcpp::Rcout << "rcppMagma: cuDeviceGetAttribute():" << std::endl ;
       cuDeviceGetAttribute( &clock, CU_DEVICE_ATTRIBUTE_CLOCK_RATE, dev );
 	  
       if (print_num_bool == true) 
@@ -964,5 +841,4 @@ int GetNumDevicesUsingOpenCL(std::string plat_str, int clDevType )
 #endif
 			
 }
-
 

@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>R: Implemention of several matrix and linear algrebra functions via
+the multi-GPU-based functionality in the MAGMA library</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body>
+<h1> Implemention of several matrix and linear algrebra functions via
+the multi-GPU-based functionality in the MAGMA library
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]" />
+</h1>
+<hr/>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]" /></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]" /></a>
+</div><h2>Documentation for package &lsquo;MagmaSolve&rsquo; version 0.1.0</h2>
+
+<ul><li><a href="../DESCRIPTION">DESCRIPTION file</a>.</li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<table width="100%">
+<tr><td style="width: 25%;"><a href="GetServerArgs.html">GetServerArgs</a></td>
+<td>Initialise shared memory on client and obtain server launch string.</td></tr>
+<tr><td style="width: 25%;"><a href="MagmaSolve.html">MagmaSolve</a></td>
+<td>MagmaSolve - provides a fast replacement for the eigen() function, using a 2 stage GPU based MAGMA library routine. Also provides a function that returns the sqrt and inverse sqrt of an input matrix.</td></tr>
+<tr><td style="width: 25%;"><a href="MakeServer.html">MakeServer</a></td>
+<td>Creates the server executable.</td></tr>
+<tr><td style="width: 25%;"><a href="RunServer.html">RunServer</a></td>
+<td>Creates the R client side shared memory region and then launches a server process which is given access to the shared region. The server then waits for the R client to give it a matrix on which it will compute the eigenvalue decomposition of useing a syevdx_2stage MAGMA library function.</td></tr>
+<tr><td style="width: 25%;"><a href="solve_mgpu.html">solve_mgpu</a></td>
+<td>Function used to obtain the eigenvalue decomposition (EVD) of a non-symmetric matrix using a MAGMA 2-stage multi-gpu EVD algorithm</td></tr>
+<tr><td style="width: 25%;"><a href="StopServer.html">StopServer</a></td>
+<td>Function signals to the server through shared memory region to terminate from its main loop and then deletes the client CSharedMemory object</td></tr>
+</table>
+</body></html>
