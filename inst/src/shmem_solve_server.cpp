@@ -319,6 +319,7 @@ int server_compute_solve_mgpu( hideprintlog hideorprint )
 {
   magma_int_t n, n2,  lwork2, info = 0;  // define MAGMA_ILP64 to get these as 64 bit integers
 
+  magma_init();
   magma_print_environment();
 
 
@@ -386,7 +387,7 @@ magma_dmalloc_pinned(&d_A, n2);
 magma_dsetmatrix ( n, n, A,n, d_A ,n, queue );
 
 std::cout << "Check: contents of d_A ----- : --->   " << std::endl;
-magma_dprint_gpu(5,5, d_A, n , queue);
+// ---> magma_dprint_gpu(5,5, d_A, n , queue);
 
 
 // Setting of dwork
@@ -394,12 +395,12 @@ double *dwork;
 magma_int_t ldwork ; 
 ldwork = n * magma_get_dgetri_nb ( n ); // optimal block size
 //cudaMallocManaged (& dwork , ldwork * sizeof ( double )); // mem. dwork
-magma_dmalloc_cpu(&dwork, ldwork);  //sitting in GPU land
+//// ----> magma_dmalloc_cpu(&dwork, ldwork);  //sitting in GPU land
+magma_dmalloc(&dwork, ldwork);  //sitting in GPU land
 
 
 // Setting of ipiv workspace object
 magma_int_t *ipiv;
-//  cudaMallocManaged (& ipiv ,n* sizeof ( int )); // unified mem. for ipiv
  magma_imalloc_cpu( &ipiv,   n      );
 
 
@@ -409,16 +410,20 @@ magma_int_t *ipiv;
 
 
 std::cout << "About to start magma_dgetrf_gpu ..... " << std::endl;
-// magma_dgetrf_gpu(n, n, d_A, n, ipiv, &info);
-magma_dgetrf_m(ngpu, n, n, d_A, n, ipiv, &info);
+magma_dgetrf_gpu(n, n, d_A, n, ipiv, &info);
+//magma_dgetrf_m(ngpu, n, n, d_A, n, ipiv, &info);
 std::cout << info << std::endl;
+std::cout << "This is the OUTPUT of magma_dgetrf_gpu ..... " << std::endl;
+magma_dprint_gpu(5,5, d_A, n , queue);
 
 
 
 std::cout << "About to start magma_dgetri_gpu ..... " << std::endl;
 magma_dgetri_gpu(n,d_A,n,ipiv,dwork,ldwork,&info);
-
 std::cout << " Info === " << info << std::endl; 
+
+
+
 
 
 std::cout << "Contents of A that sits in GPU land AFTER inverse  " << std::endl;

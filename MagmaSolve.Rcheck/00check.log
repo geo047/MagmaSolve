@@ -18,7 +18,11 @@ Found the following apparent object files/libraries:
   inst/src/shmem_solve_server.o
 Object files/libraries should not be included in a source package.
 * checking if there is a namespace ... OK
-* checking for executable files ... OK
+* checking for executable files ... WARNING
+Found the following executable file:
+  .git/objects/52/e882800369e885c88497d80f4f423d3dbc4b32
+Source packages should not contain undeclared executable files.
+See section ‘Package structure’ in the ‘Writing R Extensions’ manual.
 * checking for hidden files and directories ... NOTE
 Found the following hidden files and directories:
   inst/src/.shmem_solve_server.cpp.swp
@@ -84,4 +88,4 @@ GNU make is a SystemRequirements.
 * checking examples ... OK
 * checking PDF version of manual ... OK
 * DONE
-Status: 3 WARNINGs, 3 NOTEs
+Status: 4 WARNINGs, 3 NOTEs
