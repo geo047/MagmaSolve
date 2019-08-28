@@ -90,10 +90,9 @@ eigen
 \examples{
 # setup
 set.seed(101)
-n <- 5
+n <- 400
 ngpu <- 4
-K <- matrix(sample(1:100, n*n, TRUE), nrow=n)
-res  <- tcrossprod(K)
+res  <- matrix(sample(1:100, n*n, TRUE), nrow=n)
 
 # CPU based
  library(MagmaSolve)
@@ -102,7 +101,7 @@ res  <- tcrossprod(K)
   print("A")
   print(res[1:5,1:5])
   print("A^-1")
-  print(solve(res)[1:5,1:5])
+  # print(solve(res)[1:5,1:5])
   invGPU  <- MagmaSolve::solve_mgpu(res)
 
  ## CPU 

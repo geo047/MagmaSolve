@@ -43,10 +43,9 @@ Loading required package: Rcpp
 > 
 > # setup
 > set.seed(101)
-> n <- 5
+> n <- 400
 > ngpu <- 4
-> K <- matrix(sample(1:100, n*n, TRUE), nrow=n)
-> res  <- tcrossprod(K)
+> res  <- matrix(sample(1:100, n*n, TRUE), nrow=n)
 > 
 > # CPU based
 >  library(MagmaSolve)
@@ -56,21 +55,15 @@ Loading required package: Rcpp
 >   print("A")
 [1] "A"
 >   print(res[1:5,1:5])
-      [,1]  [,2]  [,3]  [,4]  [,5]
-[1,] 37320 24804 25371 19030 26109
-[2,] 24804 24893 21342 16808 17192
-[3,] 25371 21342 19946 14247 17103
-[4,] 19030 16808 14247 16068 14645
-[5,] 26109 17192 17103 14645 23054
+     [,1] [,2] [,3] [,4] [,5]
+[1,]   73    7   56   81   48
+[2,]   57   82   97   78    9
+[3,]   46   34   41   39   28
+[4,]   95   87   48   42   87
+[5,]   81   52    5   82   63
 >   print("A^-1")
 [1] "A^-1"
->   print(solve(res)[1:5,1:5])
-              [,1]          [,2]          [,3]          [,4]          [,5]
-[1,]  0.0017462950  0.0023345625 -0.0038665071 -7.293255e-04 -3.869164e-04
-[2,]  0.0023345625  0.0039364131 -0.0059958078 -1.271199e-03 -3.238006e-04
-[3,] -0.0038665071 -0.0059958078  0.0095789065  1.825321e-03  5.843107e-04
-[4,] -0.0007293255 -0.0012711988  0.0018253210  6.049159e-04  3.552316e-05
-[5,] -0.0003869164 -0.0003238006  0.0005843107  3.552316e-05  2.669852e-04
+>   # print(solve(res)[1:5,1:5])
 >   invGPU  <- MagmaSolve::solve_mgpu(res)
 ----- 0000 In Here 0000 -------   
 % MAGMA 2.5.1 alpha1 compiled for CUDA capability >= 3.0, 64-bit magma_int_t, 64-bit pointer.
@@ -79,73 +72,5 @@ Loading required package: Rcpp
 % device 1: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
 % device 2: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
 % device 3: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
-% Wed Aug 28 08:41:54 2019
-Check: contents of d_A ----- : --->   
+% Wed Aug 28 12:38:28 2019
 About to start magma_dgetrf_gpu ..... 
-0
-This is the OUTPUT of magma_dgetrf_gpu ..... 
-[
- 37320.0000 24804.0000 25371.0000 19030.0000 26109.0000
-   0.6646 8407.5119 4479.6666 4160.0868 -160.8305
-   0.5099   0.4948 -906.6002 4305.8961 1411.2286
-   0.6996  -0.0191   0.6186 -1252.3346 3912.1524
-   0.6798   0.5328  -0.3434  -0.4569 1711.4182
-];
-About to start magma_dgetri_gpu ..... 
- Info === 0
-Contents of A that sits in GPU land AFTER inverse  
-CUDA runtime error: invalid device pointer (17) in server_compute_solve_mgpu at shmem_solve_server.cpp:439
-[
-   0.0017   0.0023  -0.0039  -0.0007  -0.0004
-   0.0023   0.0039  -0.0060  -0.0013  -0.0003
-  -0.0039  -0.0060   0.0096   0.0018   0.0006
-  -0.0007  -0.0013   0.0018   0.0006   0.0000
-  -0.0004  -0.0003   0.0006   0.0000   0.0003
-];
-Wow  
------ 0000 In Here 0000 -------   
-> 
->  ## CPU 
->    invCPU  <- solve(res)
-> 
-> 
->    print(invGPU[1:5, 1:5])
-      [,1] [,2] [,3] [,4] [,5]
-[1,] 37320    0    0    0    0
-[2,] 24804    0    0    0    0
-[3,] 25371    0    0    0    0
-[4,] 19030    0    0    0    0
-[5,] 26109    0    0    0    0
->    print("---------------------")
-[1] "---------------------"
->    print(invCPU[1:5, 1:5])
-              [,1]          [,2]          [,3]          [,4]          [,5]
-[1,]  0.0017462950  0.0023345625 -0.0038665071 -7.293255e-04 -3.869164e-04
-[2,]  0.0023345625  0.0039364131 -0.0059958078 -1.271199e-03 -3.238006e-04
-[3,] -0.0038665071 -0.0059958078  0.0095789065  1.825321e-03  5.843107e-04
-[4,] -0.0007293255 -0.0012711988  0.0018253210  6.049159e-04  3.552316e-05
-[5,] -0.0003869164 -0.0003238006  0.0005843107  3.552316e-05  2.669852e-04
->  
->   StopServer()  # Client signals to server to terminate
- MAGMA_EVD_CLIENT Info: CSharedMemory->ExitServer() has just requested server to exit 
- MAGMA_EVD_CLIENT Info: Calling destructor of shrd_client object
->   
-> 
-> 
-> 
-> 
-> ### * <FOOTER>
-> ###
-> cleanEx()
-> options(digits = 7L)
-> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
-Time elapsed:  0.131 0.02 3.374 0 0.004 
-> grDevices::dev.off()
-null device 
-          1 
-> ###
-> ### Local variables: ***
-> ### mode: outline-minor ***
-> ### outline-regexp: "\\(> \\)?### [*]+" ***
-> ### End: ***
-> quit('no')

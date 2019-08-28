@@ -26,7 +26,7 @@ See section ‘Package structure’ in the ‘Writing R Extensions’ manual.
 * checking for hidden files and directories ... NOTE
 Found the following hidden files and directories:
   inst/src/.shmem_solve_server.cpp.swp
-  man/.nfs000000000b580e3d0003801a
+  man/.nfs000000000b580e4700038060
   src/.gitignore
   .git
 These were most likely included in error. See section ‘Package
@@ -85,7 +85,4 @@ GNU make is a SystemRequirements.
 * checking for portable use of $(BLAS_LIBS) and $(LAPACK_LIBS) ... OK
 * checking include directives in Makefiles ... OK
 * checking compiled code ... OK
-* checking examples ... OK
-* checking PDF version of manual ... OK
-* DONE
-Status: 4 WARNINGs, 3 NOTEs
+* checking examples ...
