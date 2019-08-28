@@ -72,5 +72,27 @@ Loading required package: Rcpp
 % device 1: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
 % device 2: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
 % device 3: Tesla P100-SXM2-16GB, 1480.5 MHz clock, 16280.9 MiB memory, capability 6.0
-% Wed Aug 28 12:38:28 2019
+% Wed Aug 28 14:11:14 2019
 About to start magma_dgetrf_gpu ..... 
+0
+This is the OUTPUT of magma_dgetrf_gpu ..... 
+[
+  73.0000   7.0000  56.0000  81.0000  48.0000
+  57.0000  82.0000  97.0000  78.0000   9.0000
+  46.0000  34.0000  41.0000  39.0000  28.0000
+  95.0000  87.0000  48.0000  42.0000  87.0000
+  81.0000  52.0000   5.0000  82.0000  63.0000
+];
+About to start magma_dgetri_gpu ..... 
+ Info === 0
+Contents of A that sits in GPU land AFTER inverse  
+CUDA runtime error: invalid device pointer (17) in server_compute_solve_mgpu at shmem_solve_server.cpp:432
+[
+   0.0005  -0.0017   0.0000   0.0016  -0.0028
+   0.0028  -0.0027  -0.0006   0.0024  -0.0018
+   0.0016  -0.0014  -0.0019   0.0001  -0.0023
+  -0.0004   0.0028  -0.0008  -0.0037   0.0020
+   0.0015  -0.0020   0.0003   0.0005  -0.0016
+];
+Wow  
+----- 0000 In Here 0000 -------   

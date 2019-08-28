@@ -48,6 +48,14 @@
 
 
 
+/* Trying 
+-------------
+
+GPU based memory but with a two D poiter for the data
+
+
+*/
+
 // Function definitions
 int  server_init( std::string pathString, bool print )  ;
 std::string Get_ERROR_STR( int  errorin ) ;
@@ -372,16 +380,17 @@ for (int i=0; i<n2; i++){
 }
 
 
+
 // Setting of d_A memory on GPU device
-double *d_A;
-// ----->  magma_dmalloc_pinned(&d_A, n2);
-  magma_dmalloc(&d_A, n2);
+// ---->  double *d_A;
+magmaDouble_ptr d_A;
+magma_dmalloc(&d_A, n2);
 // copy A into d_A 
-magma_dsetmatrix ( n, n, A,n, d_A ,n, queue );
+/// dont need this --> magma_dsetmatrix ( n, n, A,n, d_A ,n, queue );
 
 
 // Setting of dwork
-double *dwork;
+magmaDouble_ptr  dwork;
 magma_int_t ldwork ; 
 ldwork = n * magma_get_dgetri_nb ( n ); // optimal block size
 magma_dmalloc(&dwork, ldwork);  //sitting in GPU land
@@ -391,27 +400,22 @@ magma_dmalloc(&dwork, ldwork);  //sitting in GPU land
 magma_int_t *ipiv;
 magma_imalloc_cpu( &ipiv,   n      );
 
-
-//magma_int_t  ldda;
-//ldda   = magma_roundup( n, 32 );  // multiple of 32 by default
-
-
-
 std::cout << "About to start magma_dgetrf_gpu ..... " << std::endl;
-// magma_dgetrf_gpu(n, n, d_A, n, ipiv, &info);
-// -----> magma_dgetrf_m(ngpu, n, n, A, n, ipiv, &info);
-magma_dgetrf_m(ngpu, n, n, d_A, n, ipiv, &info);
+
+// CPU and pinned memory for A (d_A) works but GPU does not. 
+// ---> magma_dgetrf_m(ngpu, n, n, A, n, ipiv, &info);
+magma_dgetrf_m(ngpu, n, n, rvectors_ptr , n, ipiv, &info);
 std::cout << info << std::endl;
 std::cout << "This is the OUTPUT of magma_dgetrf_gpu ..... " << std::endl;
-// magma_dprint_gpu(5,5, d_A, n , queue);
  magma_dprint(5,5, A, n );
 
 
 
 std::cout << "About to start magma_dgetri_gpu ..... " << std::endl;
 // copy A from CPU to GPU
-magma_dsetmatrix ( n, n, A,n, d_A ,n, queue );
-// pinned memory for d_A is the only memory that seems to work here
+// ---> magma_dsetmatrix ( n, n, A,n, d_A ,n, queue );
+magma_dsetmatrix ( n, n, rvectors_ptr ,n, d_A ,n, queue );
+// pinned memory for d_A and double pointer GPU is the only memory that seems to work here
 magma_dgetri_gpu(n,d_A,n,ipiv,dwork,ldwork,&info);
 std::cout << " Info === " << info << std::endl; 
 
@@ -421,7 +425,7 @@ magma_dprint_gpu(5,5, d_A, n , queue);
 // ----> magma_dprint(5,5, A, n );
 
 
-
+magma_dgetmatrix ( n, n, d_A  ,n, rvectors_ptr  ,n, queue );
 
  magma_free(dwork);
  magma_free_cpu(ipiv);
